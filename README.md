@@ -5,7 +5,8 @@ Spring Boot로 만든 단축 URL 서버입니다. 긴 URL을 짧은 링크로 �
 - Java 21 / Spring Boot 4.1.2 / Gradle(Kotlin DSL, `build.gradle.kts`)
 - DB: MySQL 8.4 (Docker), Spring Data JPA
 - QR 코드: [ZXing](https://github.com/zxing/zxing) (서버에서 SVG 생성)
-- 화면: 순수 HTML/CSS/JS (`src/main/resources/static/`, 외부 라이브러리·CDN 없음)
+- 화면: 순수 HTML/CSS/JS (`src/main/resources/static/`, 외부 라이브러리·CDN 없음)<img width="738" height="347" alt="스크린샷 2026-11-15 오전 10 34 10" src="https://github.com/user-attachments/assets/bcfaa5f2-2ac5-4260-8b8a-60027718427c" />
+
 
 ## 서비스 안내
 
@@ -65,17 +66,23 @@ Spring Boot로 만든 단축 URL 서버입니다. 긴 URL을 짧은 링크로 �
 - `ClickLogRepository`(domain 인터페이스)와 `MysqlClickLogRepository`(infrastructure)로 분리했습니다.
 - 로그 저장은 `try/catch`로 감싸, 로그 오류가 리다이렉트를 막지 않습니다.
 - 최근 접속 시각 20건을 최신순으로 조회합니다. (`findTop20ByShortenUrlKeyOrderByClickedAtDesc`)
+<img width="697" height="472" alt="스크린샷 2026-11-15 오전 10 35 21" src="https://github.com/user-attachments/assets/5b3f1649-72fb-4cb0-a8df-d54deca00f63" />
+
 
 **별칭**
 - 생성 요청에 `alias`(선택)를 보냅니다. 없으면 랜덤 키, 있으면 그 값이 단축 키가 됩니다.
 - 영문·숫자·하이픈, 3~20자, 영문이나 숫자로 시작해야 합니다. (`@Pattern`)
 - 이미 있거나 예약어(`shortenUrl`, `assets`, `error`, `index`, `favicon`)면 `DuplicateShortenUrlKeyException`(409)입니다. 동시에 만들어 DB 제약에 걸린 경우도 409로 바꿉니다.
 - 대소문자를 구분합니다. 컨트롤러 경로의 정규식은 `/{shortenUrlKey:[A-Za-z0-9-]+}`입니다. 점(`.`)이 없어서 `index.html` 같은 정적 파일은 키로 잡히지 않습니다.
+<img width="738" height="347" alt="스크린샷 2026-11-15 오전 10 34 23" src="https://github.com/user-attachments/assets/669347ab-214c-4def-a2b4-5e12644cdad8" />
+
 
 **QR 코드**
 - `QrCodeService`가 단축 링크를 ZXing으로 QR로 만들어 **SVG**로 응답합니다. 확대해도 깨지지 않고, PNG는 화면에서 변환해 저장합니다.
 - QR에는 원본 URL이 아니라 **단축 링크**가 담깁니다. 그래서 QR을 스캔해도 서버를 거쳐 접속 기록이 남습니다.
 - 단축 링크의 주소는 요청을 보낸 호스트로 만들어집니다. `localhost`로 만든 QR은 휴대폰에서 열리지 않으므로, 휴대폰으로 확인하려면 Mac의 IP(예: `192.168.0.10:8080`)로 접속해 링크를 만들어야 합니다.
+<img width="650" height="469" alt="스크린샷 2026-11-15 오전 10 33 41" src="https://github.com/user-attachments/assets/e7db980b-5b0d-4189-82ab-d19648367da0" />
+
 
 ### 화면
 
@@ -178,8 +185,9 @@ DDL은 `<schema.sql 경로>`를 참고하세요. 앱은 `ddl-auto=validate`라�
 
 <!-- TODO: 실제로 작성한 테스트 이름에 맞게 위 표를 고치고, 실행 결과 스크린샷을 넣어 주세요.
 ### 테스트 실행 결과
-![테스트 실행 결과](docs/images/test.png)
--->
+<img width="753" height="790" alt="test302_atomiclong" src="https://github.com/user-attachments/assets/dd0dc3e6-e79e-41e6-a706-ea8a2412bd5c" />
+<img width="667" height="792" alt="serviceTest2" src="https://github.com/user-attachments/assets/39e538df-f9f6-4b1a-a310-8965a7131526" />
+<img width="667" height="792" alt="serviceTest1" src="https://github.com/user-attachments/assets/04594c2a-ec8b-473d-b963-206c8f923999" />
 
 ## QA 체크리스트
 
