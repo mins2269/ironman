@@ -5,8 +5,7 @@ Spring Boot로 만든 단축 URL 서버입니다. 긴 URL을 짧은 링크로 �
 - Java 21 / Spring Boot 4.1.2 / Gradle(Kotlin DSL, `build.gradle.kts`)
 - DB: MySQL 8.4 (Docker), Spring Data JPA
 - QR 코드: [ZXing](https://github.com/zxing/zxing) (서버에서 SVG 생성)
-- 화면: 순수 HTML/CSS/JS (`src/main/resources/static/`, 외부 라이브러리·CDN 없음)<img width="738" height="347" alt="스크린샷 2026-11-15 오전 10 34 10" src="https://github.com/user-attachments/assets/bcfaa5f2-2ac5-4260-8b8a-60027718427c" />
-
+- 화면: 순수 HTML/CSS/JS (`src/main/resources/static/`, 외부 라이브러리·CDN 없음)<img width="738" 
 
 ## 서비스 안내
 
