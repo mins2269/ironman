@@ -31,8 +31,11 @@ public class ClickLogEntity {
         this.clickedAt = clickedAt;
     }
 
+    public Long getId() {
+        return id;
+    }
+
     public LocalDateTime getClickedAt() {
         return clickedAt;
     }
 }
-

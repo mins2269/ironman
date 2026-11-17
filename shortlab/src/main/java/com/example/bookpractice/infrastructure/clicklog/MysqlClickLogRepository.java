@@ -1,6 +1,8 @@
 package com.example.bookpractice.infrastructure.clicklog;
 
+import com.example.bookpractice.domain.ClickLog;
 import com.example.bookpractice.domain.ClickLogRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -21,10 +23,12 @@ public class MysqlClickLogRepository implements ClickLogRepository {
     }
 
     @Override
-    public List<LocalDateTime> findRecentClickedAt(String shortenUrlKey) {
-        return clickLogJpaRepository.findTop20ByShortenUrlKeyOrderByClickedAtDesc(shortenUrlKey)
+    public List<ClickLog> findPage(String shortenUrlKey, LocalDateTime from, LocalDateTime toExclusive,
+                                   Long beforeId, int limit) {
+        return clickLogJpaRepository
+                .findPage(shortenUrlKey, from, toExclusive, beforeId, PageRequest.of(0, limit))
                 .stream()
-                .map(ClickLogEntity::getClickedAt)
+                .map(entity -> new ClickLog(entity.getId(), entity.getClickedAt()))
                 .toList();
     }
 }
