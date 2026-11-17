@@ -1,1 +1,1 @@
-rootProject.name = "book-practice"
+rootProject.name = "shortlab"

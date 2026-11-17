@@ -147,7 +147,7 @@ DDL은 `<schema.sql 경로>`를 참고하세요. 앱은 `ddl-auto=validate`라�
 
 ## 구조와 클래스 책임
 
-의존 방향: `presentation → application → domain ← infrastructure` (domain은 다른 계층을 import하지 않음). 기본 패키지는 `com.example.bookpractice`입니다.
+의존 방향: `presentation → application → domain ← infrastructure` (domain은 다른 계층을 import하지 않음). 기본 패키지는 `com.example.shortlab`입니다.
 
 | 계층 | 주요 클래스 | 책임 |
 |---|---|---|
