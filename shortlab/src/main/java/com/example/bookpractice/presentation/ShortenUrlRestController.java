@@ -2,12 +2,14 @@ package com.example.bookpractice.presentation;
 
 import com.example.bookpractice.application.QrCodeService;
 import com.example.bookpractice.application.SimpleShortenUrlService;
+import com.example.bookpractice.presentation.dto.ClickLogPageResponseDto;
 import com.example.bookpractice.presentation.dto.ShortenUrlCreateRequestDto;
 import com.example.bookpractice.presentation.dto.ShortenUrlCreateResponseDto;
 import com.example.bookpractice.presentation.dto.ShortenUrlInformationDto;
 import com.google.zxing.qrcode.QRCodeWriter;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -18,6 +20,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -71,11 +74,16 @@ public class ShortenUrlRestController {
 
     // 클릭 로그
     @GetMapping("/shortenUrl/{shortenUrlKey}/clicks")
-    public List<LocalDateTime> clicks(@PathVariable String shortenUrlKey) {
-        simpleShortenUrlService.getShortenUrlInforamtionByShortenUrlKey(shortenUrlKey);   // 없으면 404
-        return simpleShortenUrlService.getRecentClicks(shortenUrlKey);
+    public ResponseEntity<ClickLogPageResponseDto> getClicks(@PathVariable String shortenUrlKey,
+                                                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+                                                             @RequestParam(required = false) Long beforeId,
+                                                             @RequestParam(defaultValue = "20") int size) {
+        if (from != null && to != null && from.isAfter(to)) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(simpleShortenUrlService.getClicks(shortenUrlKey, from, to, beforeId, size));
     }
-
     // QR 앤드포인트
     @GetMapping("/shortenUrl/{shortenUrlKey}/qr")
     public ResponseEntity<String> qr (@PathVariable String shortenUrlKey) {

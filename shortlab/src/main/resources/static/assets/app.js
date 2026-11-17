@@ -35,6 +35,12 @@
         logBox: $('#log-box'),
         clickLog: $('#click-log'),
         logEmpty: $('#log-empty'),
+        logMore: $('#log-more'),
+        logFilter: $('#log-filter'),
+        logFrom: $('#log-from'),
+        logTo: $('#log-to'),
+        logReset: $('#log-reset'),
+        logFilterError: $('#log-filter-error'),
         historyList: $('#history-list'),
         historyEmpty: $('#history-empty'),
         historyClear: $('#history-clear'),
@@ -45,6 +51,13 @@
     let currentKey = null; // 결과 카드에 표시 중인 키
     let statsKey = null;   // 통계 조회에 표시 중인 키
     let refreshing = false;
+
+    // 접속 기록 목록 상태
+    let logItems = [];       // 지금 화면에 보여 주는 기록 (최신순)
+    let logHasNext = false;  // 더 오래된 기록이 남아 있는가
+    let logLoading = false;  // "더 보기" 요청 중인가
+    let logVersion = 0;      // 목록을 처음부터 다시 만들 때마다 올린다. 오래된 응답을 버리는 데 쓴다.
+    let logFilter = { from: '', to: '' }; // 적용 중인 조회 기간 (YYYY-MM-DD, 비어 있으면 제한 없음)
 
     /* ---------------- API ---------------- */
 
@@ -79,8 +92,14 @@
             const response = await fetch('/shortenUrl/' + encodeURIComponent(shortenUrlKey));
             return handleResponse(response);
         },
-        async clicks(shortenUrlKey) {
-            const response = await fetch(`/shortenUrl/${encodeURIComponent(shortenUrlKey)}/clicks`);
+        // beforeId가 있으면 그 번호보다 오래된 기록을, 없으면 가장 최근 기록을 가져온다.
+        // filter에 from, to(YYYY-MM-DD)가 있으면 그 기간의 기록만 가져온다.
+        async clicks(shortenUrlKey, beforeId, size, filter) {
+            const params = new URLSearchParams({ size: String(size) });
+            if (beforeId) params.set('beforeId', String(beforeId));
+            if (filter && filter.from) params.set('from', filter.from);
+            if (filter && filter.to) params.set('to', filter.to);
+            const response = await fetch(`/shortenUrl/${encodeURIComponent(shortenUrlKey)}/clicks?${params}`);
             return handleResponse(response);
         },
     };
@@ -241,23 +260,107 @@
         return `${Math.floor(sec / 86400)}일 전`;
     }
 
+    const LOG_PAGE_SIZE = 20;
+
+    function resetLog() {
+        logItems = [];
+        logHasNext = false;
+        logVersion += 1;
+    }
+
+    function renderLog() {
+        els.clickLog.replaceChildren(...logItems.map((click) => {
+            const li = createElement('li');
+            li.append(createElement('span', '', formatTime(click.clickedAt)), createElement('span', 'ago', formatAgo(click.clickedAt)));
+            return li;
+        }));
+        const filtered = Boolean(logFilter.from || logFilter.to);
+        els.logEmpty.textContent = filtered ? '선택한 기간에 접속 기록이 없어요.' : '아직 접속 기록이 없어요.';
+        els.logEmpty.hidden = logItems.length > 0;
+        els.logMore.hidden = !logHasNext;
+    }
+
+    // 처음 조회할 때와 5초마다 호출된다.
+    // 새로 생긴 기록만 맨 위에 붙이고, "더 보기"로 펼쳐 둔 목록은 그대로 둔다.
     async function loadLog() {
         if (!statsKey) return;
         const requestedKey = statsKey;
+        const version = logVersion;
         try {
-            const times = await api.clicks(requestedKey);
-            if (requestedKey !== statsKey) return; // 응답이 오는 사이 다른 링크로 바뀜
-            els.clickLog.replaceChildren(...times.map((iso) => {
-                const li = createElement('li');
-                li.append(createElement('span', '', formatTime(iso)), createElement('span', 'ago', formatAgo(iso)));
-                return li;
-            }));
-            els.logEmpty.hidden = times.length > 0;
+            const page = await api.clicks(requestedKey, null, LOG_PAGE_SIZE, logFilter);
+            if (requestedKey !== statsKey || version !== logVersion) return; // 응답이 오는 사이 상황이 바뀜
+
+            const newestKnownId = logItems.length ? logItems[0].id : 0;
+            const fresh = page.clicks.filter((click) => click.id > newestKnownId);
+            const disconnected = page.clicks.length > 0 && fresh.length === page.clicks.length;
+
+            if (logItems.length === 0 || disconnected) {
+                // 첫 로드이거나, 5초 사이에 한 쪽보다 많이 쌓여 기존 목록과 이어지지 않으면 처음부터 다시 만든다.
+                logItems = page.clicks;
+                logHasNext = page.hasNext;
+                logVersion += 1;
+            } else {
+                logItems = [...fresh, ...logItems];
+            }
+            renderLog();
         } catch (error) {
             els.logEmpty.textContent = error.message;
             els.logEmpty.hidden = false;
         }
     }
+
+    // "더 보기": 지금 목록에서 가장 오래된 기록보다 더 오래된 기록을 이어 붙인다.
+    async function loadMoreLog() {
+        if (!statsKey || logLoading || logItems.length === 0) return;
+        const requestedKey = statsKey;
+        const version = logVersion;
+        const oldestId = logItems[logItems.length - 1].id;
+
+        logLoading = true;
+        setBusy(els.logMore, true, '더 보기', '불러오는 중…');
+        try {
+            const page = await api.clicks(requestedKey, oldestId, LOG_PAGE_SIZE, logFilter);
+            if (requestedKey !== statsKey || version !== logVersion) return;
+            logItems = [...logItems, ...page.clicks];
+            logHasNext = page.hasNext;
+            renderLog();
+        } catch (error) {
+            toast(error.message);
+        } finally {
+            logLoading = false;
+            setBusy(els.logMore, false, '더 보기');
+        }
+    }
+
+    els.logMore.addEventListener('click', loadMoreLog);
+
+    // 기간을 바꾸면 목록을 처음부터 다시 만든다.
+    function applyLogFilter(from, to) {
+        logFilter = { from, to };
+        resetLog();
+        els.logMore.hidden = true;
+        loadLog();
+    }
+
+    els.logFilter.addEventListener('submit', (event) => {
+        event.preventDefault();
+        hideError(els.logFilterError);
+
+        const from = els.logFrom.value;
+        const to = els.logTo.value;
+        if (from && to && from > to) { // YYYY-MM-DD 문자열은 사전순 비교가 곧 날짜순 비교다.
+            showError(els.logFilterError, '시작일이 종료일보다 늦을 수 없어요.');
+            return;
+        }
+        applyLogFilter(from, to);
+    });
+
+    els.logReset.addEventListener('click', () => {
+        hideError(els.logFilterError);
+        els.logFrom.value = '';
+        els.logTo.value = '';
+        applyLogFilter('', '');
+    });
 
     /* ---------------- 접속 횟수 자동 갱신 ---------------- */
 
@@ -411,6 +514,12 @@
         els.statsResult.hidden = true;
         els.logBox.hidden = true;
         statsKey = null;
+        logFilter = { from: '', to: '' }; // 다른 링크를 조회하면 기간은 초기화
+        els.logFrom.value = '';
+        els.logTo.value = '';
+        hideError(els.logFilterError);
+        resetLog();
+        els.logMore.hidden = true;
 
         if (!key) {
             showError(els.statsError, '단축 URL 또는 키를 입력해 주세요.');

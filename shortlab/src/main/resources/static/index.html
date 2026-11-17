@@ -100,9 +100,21 @@
         </dl>
 
         <div class="chart-box" id="log-box" hidden>
-            <p class="chart-title">최근 접속 기록</p>
+            <p class="chart-title">접속 기록</p>
+            <p class="muted small log-note">접속한 시각을 최신순으로 보여 줘요. 기간을 고르면 그 기간의 기록만 볼 수 있어요.</p>
+            <form class="log-filter" id="log-filter" novalidate>
+                <label class="sr-only" for="log-from">시작일</label>
+                <input type="date" id="log-from">
+                <span class="log-filter-sep" aria-hidden="true">~</span>
+                <label class="sr-only" for="log-to">종료일</label>
+                <input type="date" id="log-to">
+                <button type="submit" class="btn btn-secondary btn-sm">기간 적용</button>
+                <button type="button" class="link-btn" id="log-reset">전체 보기</button>
+            </form>
+            <p class="form-error" id="log-filter-error" role="alert" hidden></p>
             <ul class="click-log" id="click-log"></ul>
             <p class="chart-empty" id="log-empty" hidden>아직 접속 기록이 없어요.</p>
+            <button type="button" class="btn btn-secondary log-more" id="log-more" hidden>더 보기</button>
         </div>
     </section>
 

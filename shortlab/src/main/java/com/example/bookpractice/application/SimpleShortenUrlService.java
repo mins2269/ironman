@@ -1,5 +1,6 @@
 package com.example.bookpractice.application;
 
+import com.example.bookpractice.domain.ClickLog;
 import com.example.bookpractice.domain.ClickLogRepository;
 import com.example.bookpractice.domain.ShortenUrl;
 import com.example.bookpractice.domain.ShortenUrlRepository;
@@ -9,6 +10,7 @@ import com.example.bookpractice.domain.exception.LackOfShortenUrlKeyException;
 import com.example.bookpractice.domain.exception.NotFoundShortenUrlException;
 import com.example.bookpractice.infrastructure.clicklog.ClickLogEntity;
 import com.example.bookpractice.infrastructure.clicklog.ClickLogJpaRepository;
+import com.example.bookpractice.presentation.dto.ClickLogPageResponseDto;
 import com.example.bookpractice.presentation.dto.ShortenUrlCreateRequestDto;
 import com.example.bookpractice.presentation.dto.ShortenUrlCreateResponseDto;
 import com.example.bookpractice.presentation.dto.ShortenUrlInformationDto;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Service;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
@@ -107,9 +110,19 @@ public class SimpleShortenUrlService {
         return shortenUrl.getOriginalUrl();
     }
 
-    // 접속 기록 조회 메서드 추가
-    public List<LocalDateTime> getRecentClicks(String key) {
-        return clickLogRepository.findRecentClickedAt(key);
+    public ClickLogPageResponseDto getClicks(String key, LocalDate from, LocalDate to,
+                                             Long beforeId, int size) {
+        // 기존의 키 확인(404) 코드
+        if (!shortenUrlRepository.existsByShortenUrlKey(key)) {
+            throw new NotFoundShortenUrlException();
+        }
+        int limit = Math.min(Math.max(size, 1), 50);
+        LocalDateTime fromTime = (from == null) ? null : from.atStartOfDay();
+        LocalDateTime toTime = (to == null) ? null : to.plusDays(1).atStartOfDay(); // 종료일 하루 전체 포함
+
+        List<ClickLog> rows = clickLogRepository.findPage(key, fromTime, toTime, beforeId, limit + 1);
+        boolean hasNext = rows.size() > limit;
+        return ClickLogPageResponseDto.of(hasNext ? rows.subList(0, limit) : rows, hasNext);
     }
 
     public ShortenUrlInformationDto getShortenUrlInforamtionByShortenUrlKey(String shortenUrlKey){

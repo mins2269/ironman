@@ -207,6 +207,15 @@ input::placeholder { color: var(--muted); opacity: .8; }
 .click-log { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
 .click-log li { display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg); border-radius: 8px; font-size: .9rem; }
 .click-log .ago { color: var(--muted); }
+.log-note { margin: 4px 0 0; }
+.log-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.log-filter input[type="date"] {
+    padding: 8px 10px; font: inherit; color: var(--text); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 8px;
+}
+.log-filter input[type="date"]:focus { border-color: var(--accent); outline: none; }
+.log-filter-sep { color: var(--muted); }
+.log-more { width: 100%; margin-top: 10px; }
 .chart-empty { margin: 8px 0 0; color: var(--muted); font-size: .88rem; }
 
 /* ---------- Alias + QR ---------- */
