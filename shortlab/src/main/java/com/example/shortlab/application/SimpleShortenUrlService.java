@@ -15,7 +15,9 @@ import com.example.shortlab.presentation.dto.ShortenUrlCreateRequestDto;
 import com.example.shortlab.presentation.dto.ShortenUrlCreateResponseDto;
 import com.example.shortlab.presentation.dto.ShortenUrlInformationDto;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -38,6 +40,7 @@ public class SimpleShortenUrlService {
         this.clickLogRepository = clickLogRepository;
     }
 
+    @Transactional
     public ShortenUrlCreateResponseDto generateShortenUrl(
             ShortenUrlCreateRequestDto shortenUrlCreateRequestDto)
     {
@@ -55,7 +58,12 @@ public class SimpleShortenUrlService {
 
         // 새로운 단축 url 만들고 저장
         ShortenUrl shortenUrl = new ShortenUrl(shortenUrlCreateRequestDto.getOriginalUrl(),key);
-        shortenUrlRepository.saveShortenUrl(shortenUrl);
+        try {
+            shortenUrlRepository.saveShortenUrl(shortenUrl);
+        } catch (DataIntegrityViolationException e) {
+            // check-then-insert 사이에 동시 요청이 먼저 저장한 경우: unique 제약이 최종 방어선
+            throw new DuplicateShortenUrlKeyException();
+        }
 
         ShortenUrlCreateResponseDto shortenUrlCreateResponseDto = new ShortenUrlCreateResponseDto(shortenUrl);
         return shortenUrlCreateResponseDto;
@@ -94,6 +102,9 @@ public class SimpleShortenUrlService {
     }
 
     /// 리다이렉트
+    // 의도적으로 메서드 전체에 @Transactional을 걸지 않는다.
+    // 조회/카운트 증가/클릭로그 저장을 각각 짧은 트랜잭션으로 분리해야
+    // 클릭로그 저장 실패(예외를 삼킴)가 카운트 증가를 롤백시키지 않고, 인기 URL의 행 락 점유도 짧아진다.
     public String getOriginalUrlByShortenUrlKey(String shortenUrlKey){
         ShortenUrl shortenUrl = shortenUrlRepository.findShortenUrlByShortenUrlKey(shortenUrlKey);
 
@@ -110,6 +121,7 @@ public class SimpleShortenUrlService {
         return shortenUrl.getOriginalUrl();
     }
 
+    @Transactional(readOnly = true)
     public ClickLogPageResponseDto getClicks(String key, LocalDate from, LocalDate to,
                                              Long beforeId, int size) {
         // 기존의 키 확인(404) 코드
@@ -125,6 +137,7 @@ public class SimpleShortenUrlService {
         return ClickLogPageResponseDto.of(hasNext ? rows.subList(0, limit) : rows, hasNext);
     }
 
+    @Transactional(readOnly = true)
     public ShortenUrlInformationDto getShortenUrlInforamtionByShortenUrlKey(String shortenUrlKey){
         ShortenUrl shortenUrl1 = shortenUrlRepository.findShortenUrlByShortenUrlKey(shortenUrlKey);
 

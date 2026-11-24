@@ -23,7 +23,6 @@ public class MysqlShortenUrlRepository implements ShortenUrlRepository {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public ShortenUrl findShortenUrlByShortenUrlKey(String shortenUrlKey) {
         return jpaRepository.findByShortenUrlKey(shortenUrlKey)
                 .map(entity -> new ShortenUrl(

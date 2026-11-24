@@ -1,5 +1,6 @@
 package com.example.shortlab.presentation;
 
+import com.example.shortlab.application.QrCodeService;
 import com.example.shortlab.application.SimpleShortenUrlService;
 import com.example.shortlab.domain.exception.NotFoundShortenUrlException;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +25,9 @@ class ShortenUrlRestControllerTest {
 
     @MockitoBean
     private SimpleShortenUrlService simpleShortenUrlService;
+
+    @MockitoBean
+    private QrCodeService qrCodeService;
 
     @Test
     @DisplayName("단축 URL 키로 요청하면 원래 URL로 리다이렉트되어야 한다.")
