@@ -61,6 +61,9 @@ public class SimpleShortenUrlService {
         try {
             shortenUrlRepository.saveShortenUrl(shortenUrl);
         } catch (DataIntegrityViolationException e) {
+            // 예외 변환 규칙: DB 예외 → 도메인 예외 변환은 서비스에서 한다.
+            // 도메인 의미가 있는 것(키 중복)만 변환하고, 나머지 DataAccessException은 그대로 올려 500으로 처리한다.
+            // 길이·필수값은 앞에서 보장하므로, 여기서의 무결성 위반은 unique 키 충돌로 본다.
             // check-then-insert 사이에 동시 요청이 먼저 저장한 경우: unique 제약이 최종 방어선
             throw new DuplicateShortenUrlKeyException();
         }
@@ -102,9 +105,11 @@ public class SimpleShortenUrlService {
     }
 
     /// 리다이렉트
-    // 의도적으로 메서드 전체에 @Transactional을 걸지 않는다.
-    // 조회/카운트 증가/클릭로그 저장을 각각 짧은 트랜잭션으로 분리해야
-    // 클릭로그 저장 실패(예외를 삼킴)가 카운트 증가를 롤백시키지 않고, 인기 URL의 행 락 점유도 짧아진다.
+    // 조회/카운트 증가/클릭로그 저장을 각각 짧은 트랜잭션으로 둬야
+    // 카운트 update의 행 락 점유가 짧아지고(인기 URL 병목 방지),
+    // 한 요청이 커넥션을 둘씩 쓰지 않는다.
+    // 클릭로그 저장은 REQUIRES_NEW라 실패해도 카운트 증가를 롤백시키지 않으며,
+    // 그 예외는 삼킨다(로그 실패가 리다이렉트를 막으면 안 됨).
     public String getOriginalUrlByShortenUrlKey(String shortenUrlKey){
         ShortenUrl shortenUrl = shortenUrlRepository.findShortenUrlByShortenUrlKey(shortenUrlKey);
 

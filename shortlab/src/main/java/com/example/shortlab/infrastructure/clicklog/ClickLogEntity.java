@@ -17,7 +17,7 @@ public class ClickLogEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "shorten_url_key", nullable = false, length = 16)
+    @Column(name = "shorten_url_key", nullable = false, length = 32)
     private String shortenUrlKey;
 
     @Column(name = "clicked_at", nullable = false)
