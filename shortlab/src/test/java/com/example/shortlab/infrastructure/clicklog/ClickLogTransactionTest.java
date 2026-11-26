@@ -57,7 +57,7 @@ class ClickLogTransactionTest {
         transactionTemplate.executeWithoutResult(status -> {
             shortenUrlRepository.incrementRedirectCount(key);
             try {
-                // click_log.shorten_url_key는 length 16 -> 초과 길이로 저장 실패를 유도
+                // click_log.shorten_url_key는 VARCHAR(32) -> 초과 길이로 저장 실패를 유도
                 clickLogRepository.save("x".repeat(40), LocalDateTime.now());
             } catch (RuntimeException ignored) {
             }
