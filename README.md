@@ -231,7 +231,7 @@ CREATE TABLE click_log (
 - **`shorten_url_key` UNIQUE + `utf8mb4_bin`:** `aB3`과 `ab3`을 다른 키로 취급하고, 중복 생성의 최종 방어선을 DB 제약으로 둡니다.
 - **`click_log`에 FK를 두지 않음:** 접속마다 INSERT가 일어나는 테이블이라 FK 검사 비용을 피하고, 로그 저장이 링크 테이블과 독립적으로 동작하게 했습니다. 대신 정합성은 서비스에서 확인합니다(조회 시 키 존재 여부 → 404).
 - **`(shorten_url_key, clicked_at)` 인덱스:** 링크별·기간별 조회용입니다. 현재 쿼리는 `id desc` 커서 정렬을 쓰므로 실행 계획 확인이 필요합니다(개선 계획 참고).
-- **`ddl-auto=validate`:** 테이블은 직접 SQL로 만들고, 엔티티와 어긋나면 앱 시작 때 실패하게 했습니다.
+- **`ddl-auto=validate`:** 테이블은 직접 SQL로 만들고, 엔티티와 테이블·컬럼·타입이 어긋나면 앱 시작 때 실패하게 했습니다. 길이·unique 제약·인덱스 불일치는 보통 잡지 못하므로 엔티티의 `length`는 DDL에 맞춰 직접 관리합니다(`shorten_url_key`는 32).
 
 ---
 
@@ -267,7 +267,8 @@ CREATE TABLE click_log (
 ### ③ 리다이렉트에 `@Transactional`을 걸지 않고, 클릭 로그는 `REQUIRES_NEW`
 `getOriginalUrlByShortenUrlKey`는 의도적으로 트랜잭션을 걸지 않습니다. 조회, 횟수 증가, 로그 저장을 각각 짧은 트랜잭션으로 나누면
 - 로그 저장이 실패해도(예외를 삼킴) **횟수 증가가 롤백되지 않고**,
-- 인기 URL의 행 락을 오래 잡지 않습니다.
+- 인기 URL의 행 락을 오래 잡지 않고,
+- 한 요청이 DB 커넥션을 둘씩 쓰지 않습니다.
 
 `MysqlClickLogRepository.save`는 `Propagation.REQUIRES_NEW`라서, 나중에 바깥에 트랜잭션이 생겨도 로그 저장이 독립적으로 커밋·실패합니다. `@Transactional`은 프록시를 거쳐야 적용되므로 같은 클래스 내부 호출이 아니라 서비스 → 저장소 빈 호출 구조로 두었고, 이 동작을 `ClickLogTransactionTest`로 검증합니다.
 
@@ -279,6 +280,11 @@ CREATE TABLE click_log (
 
 ### ⑥ 예외는 도메인 언어로, HTTP 변환은 한 곳에서
 도메인 예외(`NotFound...`, `Duplicate...`, `LackOfShortenUrlKey...`)는 HTTP를 모릅니다. `GlobalExceptionHandler`(`@RestControllerAdvice`)가 404, 409, 500으로 변환합니다.
+
+DB 예외 변환 규칙은 다음과 같습니다.
+- **DB 예외 → 도메인 예외 변환은 서비스에서** 합니다.
+- 도메인 의미가 있는 것(키 중복)만 변환합니다. 길이·필수값은 저장 전에 보장하므로, 저장 시의 `DataIntegrityViolationException`은 unique 키 충돌로 봅니다.
+- 나머지 `DataAccessException`은 그대로 올려 500으로 처리합니다. 단, 클릭 로그 저장 실패는 리다이렉트를 막지 않도록 서비스에서 삼킵니다.
 
 ### ⑦ QR은 단축 링크를 담은 SVG
 원본 URL을 직접 담으면 QR 스캔은 서버를 거치지 않아 접속 기록이 남지 않습니다. 단축 링크를 담아 모든 접속이 같은 경로로 집계되게 했습니다. SVG는 모듈 전체를 하나의 `<path>`로 그려 점 사이에 앤티앨리어싱 틈이 생기지 않게 했습니다.
